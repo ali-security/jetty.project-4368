@@ -50,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // @checkstyle-disable-check : AvoidEscapedUnicodeCharactersCheck
@@ -3184,5 +3185,38 @@ public class HttpParserTest
         assertFalse(HttpHeaderValue.parseCsvIndex("close, unknown , bytes", list::add, s -> false));
         assertThat(list, contains(HttpHeaderValue.CLOSE));
         assertThat(unknowns, empty());
+    }
+
+    public static Stream<String> badAuthorities()
+    {
+        return Stream.of(
+            "http://#host/path",
+            "https:// host/path",
+            "https://h st/path",
+            "https://h\000st/path",
+            "https://h%GGst/path",
+            "https://host%/path",
+            "https://host%0/path",
+            "https://host%u001f/path",
+            "https://host%:8080/path",
+            "https://host%0:8080/path",
+            "https://user%@host/path",
+            "https://user%0@host/path",
+            "https://host:notport/path",
+            "https://user@host:notport/path",
+            "https://user:password@host:notport/path",
+            "https://user @host.com/",
+            "https://user#@host.com/",
+            "https://[notIpv6]/",
+            "https://bad[0::1::2::3::4]/",
+            "http://[localhost]"
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("badAuthorities")
+    public void testBadAuthority(String uri)
+    {
+        assertThrows(IllegalArgumentException.class, () -> HttpURI.from(uri));
     }
 }

@@ -526,6 +526,59 @@ public interface HttpURI
             .with("%u002e%u002e", Boolean.TRUE)
             .build();
 
+        private static final boolean[] __suspiciousPathCharacters = new boolean[128];
+
+        private static final boolean[] __unreservedPctEncodedSubDelims = new boolean[128];
+
+        private static final boolean[] __pathCharacters = new boolean[128];
+
+        private static boolean isDigit(char c)
+        {
+            return (c >= '0') && (c <= '9');
+        }
+
+        private static boolean isHexDigit(char c)
+        {
+            return (((c >= 'a') && (c <= 'f')) || // ALPHA (lower)
+                ((c >= 'A') && (c <= 'F')) ||  // ALPHA (upper)
+                ((c >= '0') && (c <= '9')));
+        }
+
+        private static boolean isUnreserved(char c)
+        {
+            return (((c >= 'a') && (c <= 'z')) || // ALPHA (lower)
+                ((c >= 'A') && (c <= 'Z')) ||  // ALPHA (upper)
+                ((c >= '0') && (c <= '9')) || // DIGIT
+                (c == '-') || (c == '.') || (c == '_') || (c == '~'));
+        }
+
+        private static boolean isSubDelim(char c)
+        {
+            return c == '!' || c == '$' || c == '&' || c == '\'' || c == '(' || c == ')' || c == '*' || c == '+' || c == ',' || c == ';' || c == '=';
+        }
+
+        static boolean isUnreservedPctEncodedOrSubDelim(char c)
+        {
+            return c < __unreservedPctEncodedSubDelims.length && __unreservedPctEncodedSubDelims[c];
+        }
+
+        static
+        {
+            for (int i = 0; i < __pathCharacters.length; i++)
+            {
+                char c = (char)i;
+
+                __unreservedPctEncodedSubDelims[i] = isUnreserved(c) || c == '%' || isSubDelim(c);
+                __pathCharacters[i] = __unreservedPctEncodedSubDelims[i] ||  c == ':' || c == '@';
+            }
+            __suspiciousPathCharacters['\\'] = true;
+            __suspiciousPathCharacters[0x7F] = true;
+            for (int i = 0; i <= 0x1F; i++)
+            {
+                __suspiciousPathCharacters[i] = true;
+            }
+        }
+
         private String _scheme;
         private String _user;
         private String _host;
@@ -986,6 +1039,7 @@ public interface HttpURI
             int encodedValue = 0; // the partial encoded value
             boolean dot = false; // set to true if the path contains . or .. segments
             int end = uri.length();
+            boolean password = false;
             _emptySegment = false;
             for (int i = 0; i < end; i++)
             {
@@ -1128,27 +1182,50 @@ public interface HttpURI
                         switch (c)
                         {
                             case '/':
+                                if (encodedCharacters > 0 || password)
+                                    throw new IllegalArgumentException("Bad authority");
                                 _host = uri.substring(mark, i);
                                 pathMark = mark = i;
                                 segment = mark + 1;
                                 state = State.PATH;
+                                encodedPath = false;
                                 break;
                             case ':':
+                                if (encodedCharacters > 0 || password)
+                                    throw new IllegalArgumentException("Bad authority");
                                 if (i > mark)
                                     _host = uri.substring(mark, i);
                                 mark = i + 1;
                                 state = State.PORT;
                                 break;
                             case '@':
-                                if (_user != null)
+                                if (encodedCharacters > 0)
                                     throw new IllegalArgumentException("Bad authority");
                                 _user = uri.substring(mark, i);
                                 mark = i + 1;
                                 break;
                             case '[':
+                                if (i != mark)
+                                    throw new IllegalArgumentException("Bad authority");
                                 state = State.IPV6;
                                 break;
+                            case '%':
+                                if (encodedCharacters > 0)
+                                    throw new IllegalArgumentException("Bad authority");
+                                encodedPath = true;
+                                encodedCharacters = 2;
+                                break;
                             default:
+                                if (encodedCharacters > 0)
+                                {
+                                    encodedCharacters--;
+                                    if (!isHexDigit(c))
+                                        throw new IllegalArgumentException("Bad authority");
+                                }
+                                else if (!isUnreservedPctEncodedOrSubDelim(c))
+                                {
+                                    throw new IllegalArgumentException("Bad authority");
+                                }
                                 break;
                         }
                         break;
@@ -1195,6 +1272,22 @@ public interface HttpURI
                             pathMark = mark = i;
                             segment = i + 1;
                             state = State.PATH;
+                        }
+                        else if (!isDigit(c))
+                        {
+                            if (isUnreservedPctEncodedOrSubDelim(c))
+                            {
+                                // must be a password
+                                password = true;
+                                state = State.HOST;
+                                if (_host != null)
+                                {
+                                    mark = mark - _host.length() - 1;
+                                    _host = null;
+                                }
+                                break;
+                            }
+                            throw new IllegalArgumentException("Bad authority");
                         }
                         break;
                     }

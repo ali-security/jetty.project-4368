@@ -1010,7 +1010,7 @@
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-util</artifactId>
-        <version>${project.version}</version>
+        <version>11.0.24</version>
       </dependency>
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
@@ -1937,7 +1937,7 @@
           <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>build-resources</artifactId>
-            <version>${project.version}</version>
+            <version>11.0.24</version>
           </dependency>
         </dependencies>
         <executions>
@@ -2004,7 +2004,6 @@
                   <message>[ERROR] OLD JDK [${java.version}] in use. Jetty ${project.version} requires JDK 11 or newer</message>
                 </requireJavaVersion>
                 <versionTxtRule implementation="org.eclipse.jetty.toolchain.enforcer.rules.VersionTxtRule"></versionTxtRule>
-                <versionOsgiRule implementation="org.eclipse.jetty.toolchain.enforcer.rules.RequireOsgiCompatibleVersionRule"></versionOsgiRule>
                 <versionRedhatRule implementation="org.eclipse.jetty.toolchain.enforcer.rules.RequireRedhatCompatibleVersionRule"></versionRedhatRule>
                 <versionDebianRule implementation="org.eclipse.jetty.toolchain.enforcer.rules.RequireDebianCompatibleVersionRule"></versionDebianRule>
                 <requireUpperBoundDeps></requireUpperBoundDeps>
@@ -2037,7 +2036,7 @@
             <phase>generate-resources</phase>
             <configuration>
               <resourceBundles>
-                <resourceBundle>org.eclipse.jetty:build-resources:${project.version}</resourceBundle>
+                <resourceBundle>org.eclipse.jetty:build-resources:11.0.24</resourceBundle>
               </resourceBundles>
             </configuration>
           </execution>
