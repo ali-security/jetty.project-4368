@@ -73,7 +73,7 @@ jobs:
         run: mvn --errors --batch-mode --show-version wrapper:wrapper "-Dmaven=3.9.6"
 
       - name: Clean install dependencies and build
-        run: ./mvnw clean install -DskipTests -B
+        run: ./mvnw -pl jetty-http -am clean install
 
       # ℹ️ Command-line programs to run using the OS shell.
       # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
